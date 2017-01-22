@@ -1,3 +1,6 @@
+use std::str::Chars;
+use std::iter::Peekable;
+
 use super::NodeType;
 
 pub struct Token<'file> {
@@ -13,7 +16,10 @@ pub struct TokenFile {
 impl TokenFile {
     pub fn new(text: String, tokenizer: &Tokenizer) -> TokenFile {
         let mut builder = TokenBuilder::new();
-        tokenizer(&text, &mut builder);
+        {
+            let chars = CharIterator::new(&text);
+            tokenizer(chars, &mut builder);
+        }
         TokenFile {
             text: text,
             tokens: builder.into_tokens(),
@@ -36,7 +42,7 @@ impl TokenFile {
     }
 }
 
-pub type Tokenizer = Fn(&str, &mut TokenBuilder);
+pub type Tokenizer = Fn(CharIterator, &mut TokenBuilder);
 
 
 pub struct TokenBuilder {
@@ -50,14 +56,51 @@ impl TokenBuilder {
         self.curr_offset += c.len_utf8() as u32
     }
 
-    pub fn emit(&mut self, tt: NodeType) {
+    pub fn try_advance_while(
+        &mut self,
+        ty: NodeType,
+        chars: &mut CharIterator,
+        cond: &Fn(char) -> bool
+    ) -> bool {
+        match chars.peek() {
+            None => return false,
+            Some(c) if cond(c) => {
+                self.advance(c);
+                chars.next();
+            }
+            Some(_) => return false
+        }
+
+        while let Some(c) = chars.peek() {
+            if !cond(c) { break; }
+            self.advance(c);
+            chars.next();
+        }
+
+        self.emit(ty);
+        true
+    }
+
+    pub fn emit(&mut self, ty: NodeType) {
         let token = RawToken {
-            ty: tt,
+            ty: ty,
             start: self.prev_offset,
             end: self.curr_offset,
         };
         self.prev_offset = self.curr_offset;
         self.tokens.push(token)
+    }
+
+    pub fn try_emit(&mut self, ty: NodeType, chars: &mut CharIterator, expected: char) -> bool {
+        match chars.peek() {
+            Some(c) if c == expected => {
+                self.advance(expected);
+                chars.next();
+                self.emit(ty);
+                true
+            }
+            _ => false
+        }
     }
 
     fn new() -> TokenBuilder {
@@ -70,6 +113,24 @@ impl TokenBuilder {
 
     fn into_tokens(self) -> Vec<RawToken> {
         self.tokens
+    }
+}
+
+pub struct CharIterator<'a> {
+    inner: Peekable<Chars<'a>>
+}
+
+impl<'a> CharIterator<'a> {
+    pub fn next(&mut self) -> Option<char> {
+        self.inner.next()
+    }
+
+    pub fn peek(&mut self) -> Option<char> {
+        self.inner.peek().cloned()
+    }
+
+    fn new(text: &'a str) -> Self {
+        CharIterator { inner: text.chars().peekable() }
     }
 }
 

@@ -1,12 +1,13 @@
 extern crate syntax;
 
-use syntax::{TokenBuilder, NodeType};
+use syntax::{CharIterator, TokenBuilder, NodeType};
 use syntax::{AstBuilder, TokenIterator};
 
 
 fn main() {}
 
 use syntax::{ERROR, WHITESPACE};
+
 const LPAREN: NodeType = NodeType(03, "lparen");
 const RPAREN: NodeType = NodeType(04, "rparen");
 const NUMBER: NodeType = NodeType(05, "number");
@@ -16,47 +17,23 @@ const ID: NodeType = NodeType(07, "id");
 const TINY_FILE: NodeType = NodeType(08, "file");
 const LITERAL: NodeType = NodeType(09, "literal");
 
-fn tiny_tokenizer(text: &str, builder: &mut TokenBuilder) {
-    let mut chars = text.chars().peekable();
-    while let Some(c) = chars.next() {
+fn tiny_tokenizer(chars: CharIterator, builder: &mut TokenBuilder) {
+    let mut chars = chars;
+    loop {
+        if builder.try_emit(LPAREN, &mut chars, '(') || builder.try_emit(RPAREN, &mut chars, ')')
+            || builder.try_advance_while(WHITESPACE, &mut chars, &char::is_whitespace)
+            || builder.try_advance_while(ID, &mut chars, &char::is_alphabetic)
+            || builder.try_advance_while(NUMBER, &mut chars, &|c| c.is_digit(10)) {
+            continue
+        }
+
+        let c = match chars.next() {
+            Some(c) => c,
+            None => break
+        };
+
         builder.advance(c);
         match c {
-            c if c.is_whitespace() => {
-                while let Some(&c) = chars.peek() {
-                    if !c.is_whitespace() {
-                        break;
-                    }
-                    builder.advance(c);
-                    chars.next();
-                }
-                builder.emit(WHITESPACE)
-            }
-
-            '(' => builder.emit(LPAREN),
-            ')' => builder.emit(RPAREN),
-
-            c if c.is_alphabetic() => {
-                while let Some(&c) = chars.peek() {
-                    if !c.is_alphabetic() {
-                        break;
-                    }
-                    builder.advance(c);
-                    chars.next();
-                }
-                builder.emit(ID)
-            }
-
-            c if c.is_digit(10) => {
-                while let Some(&c) = chars.peek() {
-                    if !c.is_digit(10) {
-                        break;
-                    }
-                    builder.advance(c);
-                    chars.next();
-                }
-                builder.emit(NUMBER)
-            }
-
             '"' => loop {
                 match chars.next() {
                     Some('"') => {
@@ -113,7 +90,6 @@ number "1"
 rparen ")"
 "#);
 }
-
 
 
 #[test]

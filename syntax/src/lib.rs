@@ -3,7 +3,7 @@ use std::fmt;
 mod token;
 mod ast;
 
-pub use token::{TokenFile, Token, Tokenizer, TokenBuilder};
+pub use token::{TokenFile, Token, Tokenizer, TokenBuilder, CharIterator};
 
 pub use ast::{AstFile, Node, TokenIterator, Parser, AstBuilder};
 
