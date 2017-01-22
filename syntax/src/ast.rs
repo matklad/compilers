@@ -53,10 +53,9 @@ impl AstFile {
         let mut builder = AstBuilder::new();
         {
             let tokens = file.tokens();
-            let tokens: &mut Iterator<Item = &Token> = &mut tokens.iter();
-
+            let tokens = TokenIterator::new(&tokens);
             builder.start(file_type);
-            parser(tokens.peekable(), &mut builder);
+            parser(tokens, &mut builder);
             builder.finish(file_type);
             assert!(builder.stack.is_empty());
         }
@@ -140,9 +139,25 @@ impl RawNode {
 }
 
 
-pub type TokenIterator<'a, 'file> = Peekable<&'a mut Iterator<Item = &'a Token<'file>>>;
 pub type Parser = Fn(TokenIterator, &mut AstBuilder);
 
+pub struct TokenIterator<'a> {
+    inner: Peekable<::std::slice::Iter<'a, Token<'a>>>
+}
+
+impl<'a> TokenIterator<'a> {
+    pub fn next<'b>(&'b mut self) -> Option<Token<'a>> {
+        self.inner.next().cloned()
+    }
+
+    pub fn peek(&mut self) -> Option<Token> {
+        self.inner.peek().cloned().cloned()
+    }
+
+    fn new(tokens: &'a [Token<'a>]) -> Self {
+        TokenIterator { inner: tokens.iter().peekable() }
+    }
+}
 
 #[derive(Debug)]
 pub struct AstBuilder {
@@ -171,11 +186,11 @@ impl AstBuilder {
         self.stack.push((id, None));
     }
 
-    pub fn advance(&mut self, token: &Token) {
+    pub fn advance(&mut self, token: Token) {
         let (parent, sibling) = self.stack.pop()
             .expect("Token without parent");
 
-        let id = self.new_lead_node(parent, token);
+        let id = self.new_leaf_node(parent, token);
         if let Some(prev) = sibling {
             self.node_mut(prev).next_sibling = Some(id)
         } else {
@@ -202,7 +217,7 @@ impl AstBuilder {
         &mut self.nodes[id.0 as usize]
     }
 
-    fn new_lead_node(&mut self, parent: NodeId, token: &Token) -> NodeId {
+    fn new_leaf_node(&mut self, parent: NodeId, token: Token) -> NodeId {
         let node = RawNode {
             ty: token.ty,
             parent: Some(parent),
