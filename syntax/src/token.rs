@@ -3,6 +3,7 @@ use std::iter::Peekable;
 
 use super::{NodeType, Range};
 
+#[derive(Debug)]
 pub struct Token<'file> {
     pub ty: NodeType,
     pub text: &'file str,

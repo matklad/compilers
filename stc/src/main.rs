@@ -16,6 +16,7 @@ const ID: NodeType = NodeType(07, "id");
 
 const TINY_FILE: NodeType = NodeType(08, "file");
 const LITERAL: NodeType = NodeType(09, "literal");
+const LIST: NodeType = NodeType(10, "list");
 
 fn tiny_tokenizer(chars: CharIterator, builder: &mut TokenBuilder) {
     let mut chars = chars;
@@ -60,10 +61,29 @@ fn tiny_parser(tokens: TokenIterator, builder: &mut AstBuilder) {
 
 fn parse_literal(mut tokens: TokenIterator, builder: &mut AstBuilder) {
     if let Some(t) = tokens.next() {
-        if t.ty == NUMBER || t.ty == STRING {
-            builder.start(LITERAL);
-            builder.advance(t);
-            builder.finish(LITERAL);
+        match t.ty {
+            NUMBER | STRING => {
+                builder.start(LITERAL);
+                builder.advance(t);
+                builder.finish(LITERAL);
+            }
+            ID => builder.advance(t),
+            LPAREN => {
+                builder.start(LIST);
+                builder.advance(t);
+                if let Some(t) = tokens.next() {
+                    if t.ty == RPAREN {
+                        builder.advance(t)
+                    } else {
+                        panic!("Unexpected token: {:?}", t)
+                    }
+                } else {
+                    panic!("Unexpected eof")
+                }
+
+                builder.finish(LIST);
+            }
+            _ => panic!("Unexpected token: {:?}", t)
         }
     }
 }
@@ -97,5 +117,30 @@ fn test_parser() {
     check_parser("92", r#"
 literal
   number "92"
-    "#)
+    "#);
+
+    check_parser(r#""Hi!""#, r#"
+literal
+  string "\"Hi!\""
+    "#);
+
+    check_parser(r"foo", r#"
+id "foo"
+    "#);
+
+    check_parser(r"()", r#"
+list
+  lparen "("
+  rparen ")"
+    "#);
+
+
+    //        check_parser(r#"(foo 82 "hello")"#, r#"
+    //    list
+    //      id "foo"
+    //      literal
+    //        number "82"
+    //      literal
+    //        string "\"hello\""
+    //        "#);
 }
