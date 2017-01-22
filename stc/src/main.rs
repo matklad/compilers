@@ -1,14 +1,12 @@
-mod token;
-mod ast;
+extern crate syntax;
 
-use token::{TokenBuilder, NodeType, TokenizedFile, Tokenizer};
-use ast::{AstBuilder, TokenIterator, AstFile};
+use syntax::{TokenBuilder, NodeType, TokenFile, Tokenizer};
+use syntax::{AstBuilder, TokenIterator, AstFile};
 
 
 fn main() {}
 
-const ERROR: NodeType = NodeType(01, "bad_char");
-const WHITESPACE: NodeType = NodeType(02, "whitespace");
+use syntax::{ERROR, WHITESPACE};
 const LPAREN: NodeType = NodeType(03, "lparen");
 const RPAREN: NodeType = NodeType(04, "rparen");
 const NUMBER: NodeType = NodeType(05, "number");
@@ -96,7 +94,7 @@ fn parse_literal(mut tokens: TokenIterator, builder: &mut AstBuilder) {
 
 fn check_tokenizer(tokenizer: &Tokenizer, text: &str, expected: &str) {
     let text = text.trim();
-    let f = TokenizedFile::new(text.to_owned(), tokenizer);
+    let f = TokenFile::new(text.to_owned(), tokenizer);
     let actual = f.dump();
     assert!(actual.trim() == expected.trim(), "\nInput:\n{}\n\nOutput:\n{}\n\nExpected:\n{}", text, actual, expected);
 }
@@ -118,7 +116,7 @@ rparen ")"
 
 fn check_parser(text: &str, expected: &str) {
     let text = text.trim();
-    let f = TokenizedFile::new(text.to_owned(), &tiny_tokenizer);
+    let f = TokenFile::new(text.to_owned(), &tiny_tokenizer);
     let f = AstFile::new(f, TINY_FILE, &tiny_parser);
     let actual = f.dump();
     assert!(actual.trim() == expected.trim(), "\nInput:\n{}\n\nOutput:\n{}\n\nExpected:\n{}\n", text, actual, expected);

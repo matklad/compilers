@@ -1,27 +1,22 @@
-pub struct TokenizedFile {
-    text: String,
-    tokens: Vec<RawToken>
-}
+use std::fmt;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct NodeType(pub u32, pub &'static str);
-
-impl NodeType {
-    pub fn name(&self) -> &'static str {
-        self.1
-    }
-}
+use super::NodeType;
 
 pub struct Token<'file> {
     pub ty: NodeType,
     pub text: &'file str,
 }
 
-impl TokenizedFile {
-    pub fn new(text: String, tokenizer: &Tokenizer) -> TokenizedFile {
+pub struct TokenFile {
+    text: String,
+    tokens: Vec<RawToken>
+}
+
+impl TokenFile {
+    pub fn new(text: String, tokenizer: &Tokenizer) -> TokenFile {
         let mut builder = TokenBuilder::new();
         tokenizer(&text, &mut builder);
-        TokenizedFile {
+        TokenFile {
             text: text,
             tokens: builder.into_tokens(),
         }
@@ -43,14 +38,8 @@ impl TokenizedFile {
     }
 }
 
-#[derive(Clone, Copy)]
-struct RawToken {
-    ty: NodeType,
-    start: u32,
-    end: u32,
-}
-
 pub type Tokenizer = Fn(&str, &mut TokenBuilder);
+
 
 pub struct TokenBuilder {
     tokens: Vec<RawToken>,
@@ -84,4 +73,11 @@ impl TokenBuilder {
     fn into_tokens(self) -> Vec<RawToken> {
         self.tokens
     }
+}
+
+#[derive(Clone, Copy)]
+struct RawToken {
+    ty: NodeType,
+    start: u32,
+    end: u32,
 }
