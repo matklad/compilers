@@ -6,7 +6,7 @@ use syntax::{AstBuilder, TokenIterator};
 
 fn main() {}
 
-use syntax::{ERROR, WHITESPACE};
+use syntax::WHITESPACE;
 
 const LPAREN: NodeType = NodeType(03, "lparen");
 const RPAREN: NodeType = NodeType(04, "rparen");
@@ -43,13 +43,13 @@ fn tiny_tokenizer(chars: CharIterator, builder: &mut TokenBuilder) {
                     }
                     Some(c) => builder.advance(c),
                     None => {
-                        builder.emit(ERROR);
+                        builder.error();
                         break;
                     }
                 }
             },
 
-            _ => builder.emit(ERROR)
+            _ => builder.error()
         }
     }
 }

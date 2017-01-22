@@ -103,6 +103,10 @@ impl TokenBuilder {
         }
     }
 
+    pub fn error(&mut self) {
+        self.emit(::ERROR);
+    }
+
     fn new() -> TokenBuilder {
         TokenBuilder {
             tokens: Vec::new(),
