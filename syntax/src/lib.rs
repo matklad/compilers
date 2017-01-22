@@ -26,6 +26,40 @@ impl fmt::Debug for NodeType {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+struct Range {
+    lo: u32,
+    hi: u32
+}
+
+impl Range {
+    fn from_to(lo: u32, hi: u32) -> Range {
+        assert!(lo < hi);
+        Range { lo: lo, hi: hi }
+    }
+}
+
+impl std::ops::Index<Range> for str {
+    type Output = str;
+    fn index(&self, index: Range) -> &Self::Output {
+        &self[index.lo as usize..index.hi as usize]
+    }
+}
+
+impl std::ops::Index<Range> for String {
+    type Output = str;
+    fn index(&self, index: Range) -> &Self::Output {
+        &self[index.lo as usize..index.hi as usize]
+    }
+}
+
+
+impl fmt::Debug for Range {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        write!(fmt, "[{}; {})", self.lo, self.hi)
+    }
+}
+
 
 pub fn check_tokenizer(tokenizer: &Tokenizer, text: &str, expected: &str) {
     let text = text.trim();

@@ -1,7 +1,7 @@
 use std::str::Chars;
 use std::iter::Peekable;
 
-use super::NodeType;
+use super::{NodeType, Range};
 
 pub struct Token<'file> {
     pub ty: NodeType,
@@ -30,7 +30,7 @@ impl TokenFile {
         self.tokens.iter().map(|t| {
             Token {
                 ty: t.ty,
-                text: &self.text[(t.start as usize)..(t.end as usize)],
+                text: &self.text[t.range],
             }
         }).collect()
     }
@@ -84,8 +84,7 @@ impl TokenBuilder {
     pub fn emit(&mut self, ty: NodeType) {
         let token = RawToken {
             ty: ty,
-            start: self.prev_offset,
-            end: self.curr_offset,
+            range: Range::from_to(self.prev_offset, self.curr_offset),
         };
         self.prev_offset = self.curr_offset;
         self.tokens.push(token)
@@ -141,6 +140,5 @@ impl<'a> CharIterator<'a> {
 #[derive(Clone, Copy)]
 struct RawToken {
     ty: NodeType,
-    start: u32,
-    end: u32,
+    range: Range,
 }
