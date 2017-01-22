@@ -1,5 +1,3 @@
-use std::fmt;
-
 use super::NodeType;
 
 pub struct Token<'file> {

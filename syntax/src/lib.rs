@@ -27,3 +27,17 @@ impl fmt::Debug for NodeType {
 }
 
 
+pub fn check_tokenizer(tokenizer: &Tokenizer, text: &str, expected: &str) {
+    let text = text.trim();
+    let f = TokenFile::new(text.to_owned(), tokenizer);
+    let actual = f.dump();
+    assert!(actual.trim() == expected.trim(), "\nInput:\n{}\n\nOutput:\n{}\n\nExpected:\n{}", text, actual, expected);
+}
+
+pub fn check_parser(tokenizer: &Tokenizer, parser: &Parser, file_type: NodeType, text: &str, expected: &str) {
+    let text = text.trim();
+    let f = TokenFile::new(text.to_owned(), tokenizer);
+    let f = AstFile::new(f, file_type, parser);
+    let actual = f.dump();
+    assert!(actual.trim() == expected.trim(), "\nInput:\n{}\n\nOutput:\n{}\n\nExpected:\n{}\n", text, actual, expected);
+}
