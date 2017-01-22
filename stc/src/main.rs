@@ -96,6 +96,6 @@ rparen ")"
 fn test_parser() {
     check_parser("92", r#"
 literal
-  number
+  number "92"
     "#)
 }

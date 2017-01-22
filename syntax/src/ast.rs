@@ -1,6 +1,7 @@
 use std::iter::Peekable;
+use std::fmt::Write;
 
-use {NodeType, TokenFile, Token};
+use {NodeType, TokenFile, Token, Range};
 
 #[derive(Clone, Copy)]
 pub struct Node<'file> {
@@ -16,7 +17,7 @@ impl<'file> Node<'file> {
     pub fn children(&self) -> ChildrenIterator {
         ChildrenIterator {
             file: self.file,
-            current: self.raw().first_child,
+            current: self.raw().first_child(),
         }
     }
 
@@ -29,6 +30,11 @@ impl<'file> Node<'file> {
             buff.push_str("  ");
         }
         buff.push_str(self.ty().name());
+        match self.raw().data {
+            RawNodeData::Leaf { range } =>
+                write!(buff, " {:?}", &self.file.text[range]).expect("write to string can't fail"),
+            RawNodeData::Composite { .. } => {}
+        }
         buff.push('\n');
         for child in self.children() {
             child.dump(buff, level + 1);
@@ -37,21 +43,28 @@ impl<'file> Node<'file> {
 }
 
 pub struct AstFile {
+    text: String,
     nodes: Vec<RawNode>
 }
 
 
 impl AstFile {
     pub fn new(file: TokenFile, file_type: NodeType, parser: &Parser) -> AstFile {
-        let tokens = file.tokens();
-        let tokens: &mut Iterator<Item = &Token> = &mut tokens.iter();
-
         let mut builder = AstBuilder::new();
-        builder.start(file_type);
-        parser(tokens.peekable(), &mut builder);
-        builder.finish(file_type);
-        assert!(builder.stack.is_empty());
-        AstFile { nodes: builder.into_nodes() }
+        {
+            let tokens = file.tokens();
+            let tokens: &mut Iterator<Item = &Token> = &mut tokens.iter();
+
+            builder.start(file_type);
+            parser(tokens.peekable(), &mut builder);
+            builder.finish(file_type);
+            assert!(builder.stack.is_empty());
+        }
+
+        AstFile {
+            text: file.into_text(),
+            nodes: builder.into_nodes()
+        }
     }
 
     pub fn dump(&self) -> String {
@@ -96,8 +109,34 @@ struct NodeId(u32);
 struct RawNode {
     ty: NodeType,
     parent: Option<NodeId>,
-    first_child: Option<NodeId>,
     next_sibling: Option<NodeId>,
+    data: RawNodeData,
+}
+
+#[derive(Clone, Copy, Debug)]
+enum RawNodeData {
+    Leaf {
+        range: Range
+    },
+    Composite {
+        first_child: Option<NodeId>
+    }
+}
+
+impl RawNode {
+    fn first_child(&self) -> Option<NodeId> {
+        match self.data {
+            RawNodeData::Leaf { .. } => None,
+            RawNodeData::Composite { first_child } => first_child,
+        }
+    }
+
+    fn set_first_child(&mut self, id: NodeId) {
+        match self.data {
+            RawNodeData::Leaf { .. } => panic!("Leaf node can't have children"),
+            RawNodeData::Composite { ref mut first_child } => *first_child = Some(id),
+        }
+    }
 }
 
 
@@ -123,7 +162,7 @@ impl AstBuilder {
                 self.stack.push((parent, Some(id)))
             },
             Some((parent, None)) => {
-                self.node_mut(parent).first_child = Some(id);
+                self.node_mut(parent).set_first_child(id);
                 self.stack.push((parent, Some(id)))
             },
             None => {}
@@ -140,7 +179,7 @@ impl AstBuilder {
         if let Some(prev) = sibling {
             self.node_mut(prev).next_sibling = Some(id)
         } else {
-            self.node_mut(parent).first_child = Some(id)
+            self.node_mut(parent).set_first_child(id)
         }
         self.stack.push((parent, Some(id)))
     }
@@ -167,8 +206,8 @@ impl AstBuilder {
         let node = RawNode {
             ty: token.ty,
             parent: Some(parent),
-            first_child: None,
             next_sibling: None,
+            data: RawNodeData::Leaf { range: token.range },
         };
         let id = NodeId(self.nodes.len() as u32);
         self.nodes.push(node);
@@ -179,8 +218,8 @@ impl AstBuilder {
         let node = RawNode {
             ty: ty,
             parent: parent,
-            first_child: None,
             next_sibling: None,
+            data: RawNodeData::Composite { first_child: None }
         };
         let id = NodeId(self.nodes.len() as u32);
         self.nodes.push(node);

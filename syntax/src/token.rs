@@ -6,6 +6,7 @@ use super::{NodeType, Range};
 pub struct Token<'file> {
     pub ty: NodeType,
     pub text: &'file str,
+    pub range: Range,
 }
 
 pub struct TokenFile {
@@ -31,6 +32,7 @@ impl TokenFile {
             Token {
                 ty: t.ty,
                 text: &self.text[t.range],
+                range: t.range,
             }
         }).collect()
     }
@@ -39,6 +41,10 @@ impl TokenFile {
         self.tokens().iter()
             .map(|t| format!("{} {:?}\n", t.ty.name(), t.text))
             .collect()
+    }
+
+    pub fn into_text(self) -> String {
+        self.text
     }
 }
 

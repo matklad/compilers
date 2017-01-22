@@ -27,13 +27,19 @@ impl fmt::Debug for NodeType {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-struct Range {
+pub struct Range {
     lo: u32,
     hi: u32
 }
 
 impl Range {
-    fn from_to(lo: u32, hi: u32) -> Range {
+    pub fn lo(&self) -> u32 {
+        self.lo
+    }
+    pub fn hi(&self) -> u32 {
+        self.hi
+    }
+    pub fn from_to(lo: u32, hi: u32) -> Range {
         assert!(lo < hi);
         Range { lo: lo, hi: hi }
     }
