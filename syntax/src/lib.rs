@@ -1,11 +1,11 @@
 use std::fmt;
 
 mod token;
-mod ast;
+mod rst;
 
 pub use token::{TokenFile, Token, Tokenizer, TokenBuilder};
 
-pub use ast::{AstFile, Node, Parser, AstBuilder};
+pub use rst::{RstFile, Node, Parser, RstBuilder};
 
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -77,7 +77,7 @@ pub fn check_tokenizer(tokenizer: &Tokenizer, text: &str, expected: &str) {
 pub fn check_parser(tokenizer: &Tokenizer, parser: &Parser, file_type: NodeType, text: &str, expected: &str) {
     let text = text.trim();
     let f = TokenFile::new(text.to_owned(), tokenizer);
-    let f = AstFile::new(f, file_type, parser);
+    let f = RstFile::new(f, file_type, parser);
     let actual = f.dump();
     assert!(actual.trim() == expected.trim(), "\nInput:\n{}\n\nOutput:\n{}\n\nExpected:\n{}\n", text, actual, expected);
 }

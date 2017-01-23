@@ -6,7 +6,7 @@ use {NodeType, TokenFile, Token, Range, WHITESPACE};
 
 #[derive(Clone, Copy)]
 pub struct Node<'file> {
-    file: &'file AstFile,
+    file: &'file RstFile,
     id: NodeId,
 }
 
@@ -43,18 +43,18 @@ impl<'file> Node<'file> {
     }
 }
 
-pub struct AstFile {
+pub struct RstFile {
     text: String,
     nodes: Vec<RawNode>
 }
 
 
-impl AstFile {
-    pub fn new(file: TokenFile, file_type: NodeType, parser: &Parser) -> AstFile {
+impl RstFile {
+    pub fn new(file: TokenFile, file_type: NodeType, parser: &Parser) -> RstFile {
         let nodes = {
             let tokens = file.tokens();
             let tokens = tokens.iter().cloned().peekable();
-            let mut builder = AstBuilder::new(tokens);
+            let mut builder = RstBuilder::new(tokens);
             builder.start(file_type);
             builder.skip_ws();
             parser(&mut builder);
@@ -64,7 +64,7 @@ impl AstFile {
             builder.into_nodes()
         };
 
-        AstFile {
+        RstFile {
             text: file.into_text(),
             nodes: nodes
         }
@@ -88,7 +88,7 @@ impl AstFile {
 }
 
 pub struct ChildrenIterator<'file> {
-    file: &'file AstFile,
+    file: &'file RstFile,
     current: Option<NodeId>
 }
 
@@ -143,19 +143,19 @@ impl RawNode {
 }
 
 
-pub type Parser = Fn(&mut AstBuilder);
+pub type Parser = Fn(&mut RstBuilder);
 
 type TokenIter<'a> = Peekable<Cloned<slice::Iter<'a, Token<'a>>>>;
 
 #[derive(Debug)]
-pub struct AstBuilder<'a> {
+pub struct RstBuilder<'a> {
     tokens: TokenIter<'a>,
     nodes: Vec<RawNode>,
     stack: Vec<(NodeId, Option<NodeId>)>,
 }
 
 
-impl<'a> AstBuilder<'a> {
+impl<'a> RstBuilder<'a> {
     pub fn peek(&mut self) -> Option<NodeType> {
         self.tokens.peek().map(|t| t.ty)
     }
@@ -217,8 +217,8 @@ impl<'a> AstBuilder<'a> {
         assert_eq!(self.node_mut(p).ty, ty);
     }
 
-    fn new(tokens: TokenIter) -> AstBuilder {
-        AstBuilder {
+    fn new(tokens: TokenIter) -> RstBuilder {
+        RstBuilder {
             tokens: tokens,
             nodes: Vec::new(),
             stack: Vec::new()
