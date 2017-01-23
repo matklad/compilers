@@ -172,6 +172,14 @@ impl<'a> AstBuilder<'a> {
         self.stack.push((parent, Some(id)))
     }
 
+    pub fn eat(&mut self, ty: NodeType) {
+        match self.peek() {
+            Some(t) if t == ty => self.bump(),
+            None => panic!("EOF"),
+            Some(t) => panic!("Expected {:?}, got {:?}", ty, t),
+        }
+    }
+
     pub fn start(&mut self, ty: NodeType) {
         let ps = self.stack.pop();
         let parent = ps.map(|(p, _)| p);

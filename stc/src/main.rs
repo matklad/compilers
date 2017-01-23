@@ -84,14 +84,9 @@ fn parse(builder: &mut AstBuilder) -> bool {
                 }
             }
 
-            match builder.peek() {
-                Some(ty) if ty == RPAREN => {
-                    builder.bump();
-                    builder.finish(LIST);
-                    true
-                }
-                None | Some(_) => panic!("Expected RPAREN")
-            }
+            builder.eat(RPAREN);
+            builder.finish(LIST);
+            true
         }
         _ => false
     }
