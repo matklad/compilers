@@ -54,35 +54,46 @@ fn tiny_tokenizer(builder: &mut TokenBuilder) {
 }
 
 fn tiny_parser(builder: &mut AstBuilder) {
-    parse_literal(builder);
+    parse(builder);
 }
 
-fn parse_literal(builder: &mut AstBuilder) {
-    if let Some(ty) = builder.peek() {
-        match ty {
-            NUMBER | STRING => {
-                builder.start(LITERAL);
-                builder.bump();
-                builder.finish(LITERAL);
-            }
-            ID => builder.bump(),
-            LPAREN => {
-                builder.start(LIST);
-                builder.bump();
-                if let Some(ty) = builder.peek() {
-                    if ty == RPAREN {
-                        builder.bump()
-                    } else {
-                        panic!("Unexpected token: {:?}", ty)
-                    }
-                } else {
-                    panic!("Unexpected eof")
-                }
+fn parse(builder: &mut AstBuilder) -> bool {
+    let ty = match builder.peek() {
+        Some(ty) => ty,
+        None => return false,
+    };
 
-                builder.finish(LIST);
-            }
-            _ => panic!("Unexpected token: {:?}", ty)
+    match ty {
+        WHITESPACE => panic!("Leading ws not chomped!"),
+        NUMBER | STRING => {
+            builder.start(LITERAL);
+            builder.bump();
+            builder.finish(LITERAL);
+            true
         }
+        ID => {
+            builder.bump();
+            true
+        },
+        LPAREN => {
+            builder.start(LIST);
+            builder.bump();
+            loop {
+                if !parse(builder) {
+                    break
+                }
+            }
+
+            match builder.peek() {
+                Some(ty) if ty == RPAREN => {
+                    builder.bump();
+                    builder.finish(LIST);
+                    true
+                }
+                None | Some(_) => panic!("Expected RPAREN")
+            }
+        }
+        _ => false
     }
 }
 
