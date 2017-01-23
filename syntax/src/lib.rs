@@ -5,7 +5,7 @@ mod ast;
 
 pub use token::{TokenFile, Token, Tokenizer, TokenBuilder};
 
-pub use ast::{AstFile, Node, TokenIterator, Parser, AstBuilder};
+pub use ast::{AstFile, Node, Parser, AstBuilder};
 
 
 #[derive(Clone, Copy, PartialEq, Eq)]

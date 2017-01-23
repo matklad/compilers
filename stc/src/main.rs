@@ -1,7 +1,6 @@
 extern crate syntax;
 
-use syntax::{TokenBuilder, NodeType};
-use syntax::{AstBuilder, TokenIterator};
+use syntax::{AstBuilder, TokenBuilder, NodeType};
 
 
 fn main() {}
@@ -54,27 +53,27 @@ fn tiny_tokenizer(builder: &mut TokenBuilder) {
     }
 }
 
-fn tiny_parser(tokens: TokenIterator, builder: &mut AstBuilder) {
-    parse_literal(tokens, builder);
+fn tiny_parser(builder: &mut AstBuilder) {
+    parse_literal(builder);
 }
 
-fn parse_literal(mut tokens: TokenIterator, builder: &mut AstBuilder) {
-    if let Some(t) = tokens.next() {
-        match t.ty {
+fn parse_literal(builder: &mut AstBuilder) {
+    if let Some(ty) = builder.peek() {
+        match ty {
             NUMBER | STRING => {
                 builder.start(LITERAL);
-                builder.advance(t);
+                builder.bump();
                 builder.finish(LITERAL);
             }
-            ID => builder.advance(t),
+            ID => builder.bump(),
             LPAREN => {
                 builder.start(LIST);
-                builder.advance(t);
-                if let Some(t) = tokens.next() {
-                    if t.ty == RPAREN {
-                        builder.advance(t)
+                builder.bump();
+                if let Some(ty) = builder.peek() {
+                    if ty == RPAREN {
+                        builder.bump()
                     } else {
-                        panic!("Unexpected token: {:?}", t)
+                        panic!("Unexpected token: {:?}", ty)
                     }
                 } else {
                     panic!("Unexpected eof")
@@ -82,7 +81,7 @@ fn parse_literal(mut tokens: TokenIterator, builder: &mut AstBuilder) {
 
                 builder.finish(LIST);
             }
-            _ => panic!("Unexpected token: {:?}", t)
+            _ => panic!("Unexpected token: {:?}", ty)
         }
     }
 }

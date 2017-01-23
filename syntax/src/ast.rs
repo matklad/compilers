@@ -1,4 +1,5 @@
-use std::iter::Peekable;
+use std::iter::{Peekable, Cloned};
+use std::slice;
 use std::fmt::Write;
 
 use {NodeType, TokenFile, Token, Range};
@@ -50,19 +51,20 @@ pub struct AstFile {
 
 impl AstFile {
     pub fn new(file: TokenFile, file_type: NodeType, parser: &Parser) -> AstFile {
-        let mut builder = AstBuilder::new();
-        {
+        let nodes = {
             let tokens = file.tokens();
-            let tokens = TokenIterator::new(&tokens);
+            let tokens = tokens.iter().cloned().peekable();
+            let mut builder = AstBuilder::new(tokens);
             builder.start(file_type);
-            parser(tokens, &mut builder);
+            parser(&mut builder);
             builder.finish(file_type);
             assert!(builder.stack.is_empty());
-        }
+            builder.into_nodes()
+        };
 
         AstFile {
             text: file.into_text(),
-            nodes: builder.into_nodes()
+            nodes: nodes
         }
     }
 
@@ -139,34 +141,37 @@ impl RawNode {
 }
 
 
-pub type Parser = Fn(TokenIterator, &mut AstBuilder);
+pub type Parser = Fn(&mut AstBuilder);
 
-pub struct TokenIterator<'a> {
-    inner: Peekable<::std::slice::Iter<'a, Token<'a>>>
-}
-
-impl<'a> TokenIterator<'a> {
-    pub fn next<'b>(&'b mut self) -> Option<Token<'a>> {
-        self.inner.next().cloned()
-    }
-
-    pub fn peek(&mut self) -> Option<Token> {
-        self.inner.peek().cloned().cloned()
-    }
-
-    fn new(tokens: &'a [Token<'a>]) -> Self {
-        TokenIterator { inner: tokens.iter().peekable() }
-    }
-}
+type TokenIter<'a> = Peekable<Cloned<slice::Iter<'a, Token<'a>>>>;
 
 #[derive(Debug)]
-pub struct AstBuilder {
+pub struct AstBuilder<'a> {
+    tokens: TokenIter<'a>,
     nodes: Vec<RawNode>,
     stack: Vec<(NodeId, Option<NodeId>)>,
 }
 
 
-impl AstBuilder {
+impl<'a> AstBuilder<'a> {
+    pub fn peek(&mut self) -> Option<NodeType> {
+        self.tokens.peek().map(|t| t.ty)
+    }
+
+    pub fn bump(&mut self) {
+        let token = self.tokens.next().expect("EOF");
+        let (parent, sibling) = self.stack.pop()
+            .expect("Token without parent");
+
+        let id = self.new_leaf_node(parent, token);
+        if let Some(prev) = sibling {
+            self.node_mut(prev).next_sibling = Some(id)
+        } else {
+            self.node_mut(parent).set_first_child(id)
+        }
+        self.stack.push((parent, Some(id)))
+    }
+
     pub fn start(&mut self, ty: NodeType) {
         let ps = self.stack.pop();
         let parent = ps.map(|(p, _)| p);
@@ -186,27 +191,18 @@ impl AstBuilder {
         self.stack.push((id, None));
     }
 
-    pub fn advance(&mut self, token: Token) {
-        let (parent, sibling) = self.stack.pop()
-            .expect("Token without parent");
-
-        let id = self.new_leaf_node(parent, token);
-        if let Some(prev) = sibling {
-            self.node_mut(prev).next_sibling = Some(id)
-        } else {
-            self.node_mut(parent).set_first_child(id)
-        }
-        self.stack.push((parent, Some(id)))
-    }
-
     pub fn finish(&mut self, ty: NodeType) {
         let (p, _) = self.stack.pop()
             .expect("Empty parent stack");
         assert_eq!(self.node_mut(p).ty, ty);
     }
 
-    fn new() -> AstBuilder {
-        AstBuilder { nodes: Vec::new(), stack: Vec::new() }
+    fn new(tokens: TokenIter) -> AstBuilder {
+        AstBuilder {
+            tokens: tokens,
+            nodes: Vec::new(),
+            stack: Vec::new()
+        }
     }
 
     fn into_nodes(self) -> Vec<RawNode> {
