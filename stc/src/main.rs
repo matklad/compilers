@@ -1,6 +1,6 @@
 extern crate syntax;
 
-use syntax::{CharIterator, TokenBuilder, NodeType};
+use syntax::{TokenBuilder, NodeType};
 use syntax::{AstBuilder, TokenIterator};
 
 
@@ -18,31 +18,30 @@ const TINY_FILE: NodeType = NodeType(08, "file");
 const LITERAL: NodeType = NodeType(09, "literal");
 const LIST: NodeType = NodeType(10, "list");
 
-fn tiny_tokenizer(chars: CharIterator, builder: &mut TokenBuilder) {
-    let mut chars = chars;
+fn tiny_tokenizer(builder: &mut TokenBuilder) {
     loop {
-        if builder.try_emit(LPAREN, &mut chars, '(') || builder.try_emit(RPAREN, &mut chars, ')')
-            || builder.try_advance_while(WHITESPACE, &mut chars, &char::is_whitespace)
-            || builder.try_advance_while(ID, &mut chars, &char::is_alphabetic)
-            || builder.try_advance_while(NUMBER, &mut chars, &|c| c.is_digit(10)) {
+        if builder.try_emit(LPAREN, '(') || builder.try_emit(RPAREN, ')')
+            || builder.try_advance_while(WHITESPACE, &char::is_whitespace)
+            || builder.try_advance_while(ID, &char::is_alphabetic)
+            || builder.try_advance_while(NUMBER, &|c| c.is_digit(10)) {
             continue
         }
 
-        let c = match chars.next() {
+        let c = match builder.peek() {
             Some(c) => c,
             None => break
         };
 
-        builder.advance(c);
+        builder.bump();
         match c {
             '"' => loop {
-                match chars.next() {
+                match builder.peek() {
                     Some('"') => {
-                        builder.advance('"');
+                        builder.bump();
                         builder.emit(STRING);
                         break;
                     }
-                    Some(c) => builder.advance(c),
+                    Some(_) => builder.bump(),
                     None => {
                         builder.error();
                         break;

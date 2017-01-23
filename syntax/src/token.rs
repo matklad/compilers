@@ -17,14 +17,15 @@ pub struct TokenFile {
 
 impl TokenFile {
     pub fn new(text: String, tokenizer: &Tokenizer) -> TokenFile {
-        let mut builder = TokenBuilder::new();
-        {
-            let chars = CharIterator::new(&text);
-            tokenizer(chars, &mut builder);
-        }
+        let tokens = {
+            let chars = text.chars().peekable();
+            let mut builder = TokenBuilder::new(chars);
+            tokenizer(&mut builder);
+            builder.into_tokens()
+        };
         TokenFile {
             text: text,
-            tokens: builder.into_tokens(),
+            tokens: tokens,
         }
     }
 
@@ -49,39 +50,43 @@ impl TokenFile {
     }
 }
 
-pub type Tokenizer = Fn(CharIterator, &mut TokenBuilder);
+pub type Tokenizer = Fn(&mut TokenBuilder);
 
+type CharIter<'a> = Peekable<Chars<'a>>;
 
-pub struct TokenBuilder {
+pub struct TokenBuilder<'a> {
+    chars: CharIter<'a>,
     tokens: Vec<RawToken>,
     prev_offset: u32,
     curr_offset: u32,
 }
 
-impl TokenBuilder {
-    pub fn advance(&mut self, c: char) {
+impl<'a> TokenBuilder<'a> {
+    pub fn peek(&mut self) -> Option<char> {
+        self.chars.peek().cloned()
+    }
+
+    pub fn bump(&mut self) {
+        let c = self.chars.next().expect("EOF");
         self.curr_offset += c.len_utf8() as u32
     }
 
     pub fn try_advance_while(
         &mut self,
         ty: NodeType,
-        chars: &mut CharIterator,
         cond: &Fn(char) -> bool
     ) -> bool {
-        match chars.peek() {
+        match self.peek() {
             None => return false,
             Some(c) if cond(c) => {
-                self.advance(c);
-                chars.next();
+                self.bump();
             }
             Some(_) => return false
         }
 
-        while let Some(c) = chars.peek() {
+        while let Some(c) = self.peek() {
             if !cond(c) { break; }
-            self.advance(c);
-            chars.next();
+            self.bump()
         }
 
         self.emit(ty);
@@ -97,11 +102,10 @@ impl TokenBuilder {
         self.tokens.push(token)
     }
 
-    pub fn try_emit(&mut self, ty: NodeType, chars: &mut CharIterator, expected: char) -> bool {
-        match chars.peek() {
+    pub fn try_emit(&mut self, ty: NodeType, expected: char) -> bool {
+        match self.peek() {
             Some(c) if c == expected => {
-                self.advance(expected);
-                chars.next();
+                self.bump();
                 self.emit(ty);
                 true
             }
@@ -113,8 +117,9 @@ impl TokenBuilder {
         self.emit(::ERROR);
     }
 
-    fn new() -> TokenBuilder {
+    fn new(chars: CharIter) -> TokenBuilder {
         TokenBuilder {
+            chars: chars,
             tokens: Vec::new(),
             prev_offset: 0,
             curr_offset: 0,
@@ -123,24 +128,6 @@ impl TokenBuilder {
 
     fn into_tokens(self) -> Vec<RawToken> {
         self.tokens
-    }
-}
-
-pub struct CharIterator<'a> {
-    inner: Peekable<Chars<'a>>
-}
-
-impl<'a> CharIterator<'a> {
-    pub fn next(&mut self) -> Option<char> {
-        self.inner.next()
-    }
-
-    pub fn peek(&mut self) -> Option<char> {
-        self.inner.peek().cloned()
-    }
-
-    fn new(text: &'a str) -> Self {
-        CharIterator { inner: text.chars().peekable() }
     }
 }
 
