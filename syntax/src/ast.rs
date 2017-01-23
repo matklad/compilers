@@ -2,7 +2,7 @@ use std::iter::{Peekable, Cloned};
 use std::slice;
 use std::fmt::Write;
 
-use {NodeType, TokenFile, Token, Range};
+use {NodeType, TokenFile, Token, Range, WHITESPACE};
 
 #[derive(Clone, Copy)]
 pub struct Node<'file> {
@@ -56,7 +56,9 @@ impl AstFile {
             let tokens = tokens.iter().cloned().peekable();
             let mut builder = AstBuilder::new(tokens);
             builder.start(file_type);
+            builder.skip_ws();
             parser(&mut builder);
+            builder.skip_ws();
             builder.finish(file_type);
             assert!(builder.stack.is_empty());
             builder.into_nodes()
@@ -177,6 +179,16 @@ impl<'a> AstBuilder<'a> {
             Some(t) if t == ty => self.bump(),
             None => panic!("EOF"),
             Some(t) => panic!("Expected {:?}, got {:?}", ty, t),
+        }
+    }
+
+    pub fn skip_ws(&mut self) {
+        while let Some(t) = self.peek() {
+            if t != WHITESPACE {
+                break;
+            }
+
+            self.bump()
         }
     }
 

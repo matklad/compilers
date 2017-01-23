@@ -79,9 +79,11 @@ fn parse(builder: &mut AstBuilder) -> bool {
             builder.start(LIST);
             builder.bump();
             loop {
+                builder.skip_ws();
                 if !parse(builder) {
                     break
                 }
+                builder.skip_ws();
             }
 
             builder.eat(RPAREN);
@@ -139,12 +141,16 @@ list
     "#);
 
 
-    //        check_parser(r#"(foo 82 "hello")"#, r#"
-    //    list
-    //      id "foo"
-    //      literal
-    //        number "82"
-    //      literal
-    //        string "\"hello\""
-    //        "#);
+    check_parser(r#"(foo 82 "hello")"#, r#"
+list
+  lparen "("
+  id "foo"
+  whitespace " "
+  literal
+    number "82"
+  whitespace " "
+  literal
+    string "\"hello\""
+  rparen ")"
+    "#);
 }
