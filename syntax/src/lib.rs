@@ -1,3 +1,5 @@
+extern crate data_structures;
+
 use std::fmt;
 
 mod token;

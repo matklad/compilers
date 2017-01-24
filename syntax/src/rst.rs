@@ -1,3 +1,5 @@
+use data_structures::LazyCell;
+
 use std::iter::{Peekable, Cloned};
 use std::slice;
 use std::fmt::{self, Write};
@@ -36,20 +38,21 @@ impl<'f> Node<'f> {
     }
 
     fn range(&self) -> Range {
-        if let RawNodeData::Leaf { range } = self.file.raw(self.id).data {
-            return range
+        match self.file.raw(self.id).data {
+            RawNodeData::Leaf { range } => range,
+            RawNodeData::Composite { ref range, .. } => range.get(|| {
+                let mut children = self.children_with_ws();
+                let first = children.next().unwrap().range();
+                let lo = first.lo();
+                let mut hi = first.hi();
+                for child in children {
+                    let r = child.range();
+                    assert_eq!(r.lo(), hi);
+                    hi = r.hi();
+                }
+                Range::from_to(lo, hi)
+            })
         }
-
-        let mut children = self.children_with_ws();
-        let first = children.next().unwrap().range();
-        let lo = first.lo();
-        let mut hi = first.hi();
-        for child in children {
-            let r = child.range();
-            assert_eq!(r.lo(), hi);
-            hi = r.hi();
-        }
-        Range::from_to(lo, hi)
     }
 
     fn raw(&self) -> &RawNode {
@@ -183,7 +186,8 @@ enum RawNodeData {
         range: Range
     },
     Composite {
-        first_child: Option<NodeId>
+        first_child: Option<NodeId>,
+        range: LazyCell<Range>,
     }
 }
 
@@ -191,14 +195,14 @@ impl RawNode {
     fn first_child(&self) -> Option<NodeId> {
         match self.data {
             RawNodeData::Leaf { .. } => None,
-            RawNodeData::Composite { first_child } => first_child,
+            RawNodeData::Composite { first_child, .. } => first_child,
         }
     }
 
     fn set_first_child(&mut self, id: NodeId) {
         match self.data {
             RawNodeData::Leaf { .. } => panic!("Leaf node can't have children"),
-            RawNodeData::Composite { ref mut first_child } => *first_child = Some(id),
+            RawNodeData::Composite { ref mut first_child, .. } => *first_child = Some(id),
         }
     }
 }
@@ -311,7 +315,7 @@ impl<'a> RstBuilder<'a> {
             ty: ty,
             parent: parent,
             next_sibling: None,
-            data: RawNodeData::Composite { first_child: None }
+            data: RawNodeData::Composite { first_child: None, range: LazyCell::new() }
         };
         let id = NodeId(self.nodes.len() as u32);
         self.nodes.push(node);

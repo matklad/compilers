@@ -1,7 +1,6 @@
 [package]
-name = "syntax"
+name = "data_structures"
 version = "0.1.0"
 authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
 
 [dependencies]
-data_structures = { path = "../data_structures" }
