@@ -5,12 +5,12 @@ use std::fmt::{self, Write};
 use {NodeType, TokenFile, Token, Range, WHITESPACE};
 
 #[derive(Clone, Copy)]
-pub struct Node<'file> {
-    file: &'file RstFile,
+pub struct Node<'f> {
+    file: &'f RstFile,
     id: NodeId,
 }
 
-impl<'file> Node<'file> {
+impl<'f> Node<'f> {
     pub fn ty(&self) -> NodeType {
         self.raw().ty
     }
@@ -29,6 +29,27 @@ impl<'file> Node<'file> {
             file: self.file,
             current: self.raw().first_child(),
         }
+    }
+
+    pub fn text(&self) -> &'f str {
+        &self.file.text[self.range()]
+    }
+
+    fn range(&self) -> Range {
+        if let RawNodeData::Leaf { range } = self.file.raw(self.id).data {
+            return range
+        }
+
+        let mut children = self.children_with_ws();
+        let first = children.next().unwrap().range();
+        let lo = first.lo();
+        let mut hi = first.hi();
+        for child in children {
+            let r = child.range();
+            assert_eq!(r.lo(), hi);
+            hi = r.hi();
+        }
+        Range::from_to(lo, hi)
     }
 
     fn raw(&self) -> RawNode {

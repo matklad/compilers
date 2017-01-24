@@ -1,6 +1,6 @@
 use syntax::{TokenFile, RstFile, Node, NodeType};
 
-use rst::{tiny_tokenizer, tiny_parser, LITERAL, ID, LIST, LPAREN, RPAREN, TINY_FILE};
+use rst::{tiny_tokenizer, tiny_parser, LITERAL, ID, LIST, LPAREN, RPAREN, TINY_FILE, STRING, NUMBER};
 
 pub struct AstFile {
     rst: RstFile
@@ -11,7 +11,7 @@ impl AstFile {
         AstFile { rst: rst }
     }
 
-    fn from_text(text: &str) -> AstFile {
+    pub fn from_text(text: &str) -> AstFile {
         let tokens = TokenFile::new(text.to_owned(), &tiny_tokenizer);
         let rst = RstFile::new(tokens, TINY_FILE, &tiny_parser);
         AstFile::new(rst)
@@ -22,10 +22,12 @@ impl AstFile {
     }
 }
 
-trait AstElement<'f> {
+pub trait AstElement<'f> {
     fn ty() -> NodeType;
 
     fn from_node(node: Node<'f>) -> Self;
+
+    fn node(&self) -> Node<'f>;
 }
 
 pub struct Program<'f> {
@@ -40,6 +42,10 @@ impl<'f> AstElement<'f> for Program<'f> {
     fn from_node(node: Node<'f>) -> Self {
         assert_eq!(node.ty(), Self::ty());
         Program { node: node }
+    }
+
+    fn node(&self) -> Node<'f> {
+        self.node
     }
 }
 
@@ -63,6 +69,10 @@ impl<'f> AstElement<'f> for List<'f> {
     fn from_node(node: Node<'f>) -> Self {
         assert_eq!(node.ty(), Self::ty());
         List { node: node }
+    }
+
+    fn node(&self) -> Node<'f> {
+        self.node
     }
 }
 
@@ -99,6 +109,31 @@ impl<'f> AstElement<'f> for Literal<'f> {
         assert_eq!(node.ty(), Self::ty());
         Literal { node: node }
     }
+
+    fn node(&self) -> Node<'f> {
+        self.node
+    }
+}
+
+pub enum LiteralValue<'f> {
+    Int(u32),
+    String(&'f str)
+}
+
+impl<'f> Literal<'f> {
+    pub fn value(&self) -> LiteralValue {
+        let text = self.node().text();
+        match self.literal_ty() {
+            STRING => LiteralValue::String(&text[1..text.len() - 1]),
+            NUMBER => LiteralValue::Int(text.parse().unwrap()),
+            _ => panic!()
+        }
+    }
+
+    fn literal_ty(&self) -> NodeType {
+        let child = self.node.children().next().unwrap();
+        child.ty()
+    }
 }
 
 
@@ -116,6 +151,10 @@ impl<'f> AstElement<'f> for Variable<'f> {
     fn from_node(node: Node<'f>) -> Self {
         assert_eq!(node.ty(), Self::ty());
         Variable { node: node }
+    }
+
+    fn node(&self) -> Node<'f> {
+        self.node
     }
 }
 
