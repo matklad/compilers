@@ -1,3 +1,3 @@
 [workspace]
-members = [ "stc", "syntax" ] 
+members = [ "super_tiny_compiler", "syntax" ]
 

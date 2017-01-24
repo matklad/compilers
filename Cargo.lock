@@ -10,7 +10,7 @@ name = "data_structures"
 version = "0.1.0"
 
 [[package]]
-name = "stc"
+name = "super_tiny_compiler"
 version = "0.1.0"
 dependencies = [
  "syntax 0.1.0",

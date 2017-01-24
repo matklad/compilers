@@ -1,5 +1,5 @@
 [package]
-name = "stc"
+name = "super_tiny_compiler"
 version = "0.1.0"
 authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
 
