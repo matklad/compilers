@@ -96,4 +96,10 @@ fn test_ast() {
     };
 
     let elements = sub.elements();
+    assert_eq!(elements.len(), 2);
+
+    match (&elements[0], &elements[1]) {
+        (&ListElement::Variable(_), &ListElement::Literal(_)) => {},
+        _ => panic!()
+    };
 }
