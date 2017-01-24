@@ -52,7 +52,7 @@ impl<'f> Node<'f> {
         Range::from_to(lo, hi)
     }
 
-    fn raw(&self) -> RawNode {
+    fn raw(&self) -> &RawNode {
         self.file.raw(self.id)
     }
 
@@ -118,8 +118,8 @@ impl RstFile {
         Node { file: self, id: NodeId(0) }
     }
 
-    fn raw(&self, id: NodeId) -> RawNode {
-        self.nodes[id.0 as usize]
+    fn raw(&self, id: NodeId) -> &RawNode {
+        &self.nodes[id.0 as usize]
     }
 }
 
@@ -169,7 +169,7 @@ impl<'f> ChildrenIterator<'f> {
 #[derive(Clone, Copy, Debug)]
 struct NodeId(u32);
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Debug)]
 struct RawNode {
     ty: NodeType,
     parent: Option<NodeId>,
@@ -177,7 +177,7 @@ struct RawNode {
     data: RawNodeData,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Debug)]
 enum RawNodeData {
     Leaf {
         range: Range
