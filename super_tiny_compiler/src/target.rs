@@ -2,15 +2,22 @@ use ast::{self, AstFile, AstElement};
 use std::iter::FromIterator;
 
 #[derive(Debug)]
-struct Program {
-    body: Vec<ExpressionStatement>
+pub struct Program {
+    pub body: Vec<ExpressionStatement>
+}
+
+impl Program {
+    pub fn from_text(text: &str) -> Program {
+        let file = AstFile::from_text(text);
+        translate(&file)
+    }
 }
 
 #[derive(Debug)]
-struct ExpressionStatement(Expression);
+pub struct ExpressionStatement(pub Expression);
 
 #[derive(Debug)]
-enum Expression {
+pub enum Expression {
     Call {
         calee: Box<Expression>,
         arguments: Vec<Expression>,
@@ -29,7 +36,7 @@ enum Expression {
     }
 }
 
-fn translate(ast: AstFile) -> Program {
+fn translate(ast: &AstFile) -> Program {
     translate_program(ast.root())
 }
 
@@ -72,7 +79,7 @@ fn translate_identifier(element: ast::Variable) -> Expression {
 #[test]
 fn test_translation() {
     let source = AstFile::from_text(r#"hello (1 "hi")"#);
-    let target = translate(source);
+    let target = translate(&source);
     let actual = format!("{:#?}", target);
     let expected = r#"
 Program {
