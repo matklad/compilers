@@ -1,0 +1,11 @@
+[root]
+name = "syntax"
+version = "0.1.0"
+
+[[package]]
+name = "stc"
+version = "0.1.0"
+dependencies = [
+ "syntax 0.1.0",
+]
+

@@ -1,6 +1,6 @@
 use std::iter::{Peekable, Cloned};
 use std::slice;
-use std::fmt::Write;
+use std::fmt::{self, Write};
 
 use {NodeType, TokenFile, Token, Range, WHITESPACE};
 
@@ -15,8 +15,17 @@ impl<'file> Node<'file> {
         self.raw().ty
     }
 
+    pub fn children_with_ws(&self) -> ChildrenIterator {
+        ChildrenIterator {
+            skip_ws: false,
+            file: self.file,
+            current: self.raw().first_child(),
+        }
+    }
+
     pub fn children(&self) -> ChildrenIterator {
         ChildrenIterator {
+            skip_ws: true,
             file: self.file,
             current: self.raw().first_child(),
         }
@@ -37,9 +46,15 @@ impl<'file> Node<'file> {
             RawNodeData::Composite { .. } => {}
         }
         buff.push('\n');
-        for child in self.children() {
+        for child in self.children_with_ws() {
             child.dump(buff, level + 1);
         }
+    }
+}
+
+impl<'f> fmt::Debug for Node<'f> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        self.ty().fmt(fmt)
     }
 }
 
@@ -72,13 +87,13 @@ impl RstFile {
 
     pub fn dump(&self) -> String {
         let mut buff = String::new();
-        for child in self.root().children() {
+        for child in self.root().children_with_ws() {
             child.dump(&mut buff, 0);
         }
         buff
     }
 
-    fn root(&self) -> Node {
+    pub fn root(&self) -> Node {
         Node { file: self, id: NodeId(0) }
     }
 
@@ -87,20 +102,45 @@ impl RstFile {
     }
 }
 
-pub struct ChildrenIterator<'file> {
-    file: &'file RstFile,
+pub struct ChildrenIterator<'f> {
+    skip_ws: bool,
+    file: &'f RstFile,
     current: Option<NodeId>
 }
 
-impl<'file> Iterator for ChildrenIterator<'file> {
-    type Item = Node<'file>;
+impl<'f> Iterator for ChildrenIterator<'f> {
+    type Item = Node<'f>;
 
     fn next(&mut self) -> Option<Self::Item> {
+        if self.skip_ws {
+            self.skip_ws()
+        }
         if let Some(id) = self.current.take() {
             self.current = self.file.raw(id).next_sibling;
             Some(Node { file: self.file, id: id })
         } else {
             None
+        }
+    }
+}
+
+impl<'f> ChildrenIterator<'f> {
+    pub fn skip_node(&mut self, ty: NodeType) {
+        let child = self.next().expect("Can't skip child");
+        assert_eq!(child.ty(), ty);
+    }
+
+    pub fn finish(&mut self) {
+        assert!(self.current.is_none());
+    }
+
+    fn skip_ws(&mut self) {
+        while let Some(node) = self.current {
+            let node = self.file.raw(node);
+            if node.ty != WHITESPACE {
+                break
+            }
+            self.current = node.next_sibling
         }
     }
 }

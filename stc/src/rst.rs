@@ -1,16 +1,16 @@
 use syntax::{self, RstBuilder, TokenBuilder, NodeType, WHITESPACE};
 
-const LPAREN: NodeType = NodeType(03, "lparen");
-const RPAREN: NodeType = NodeType(04, "rparen");
-const NUMBER: NodeType = NodeType(05, "number");
-const STRING: NodeType = NodeType(06, "string");
-const ID: NodeType = NodeType(07, "id");
+pub const LPAREN: NodeType = NodeType(03, "lparen");
+pub const RPAREN: NodeType = NodeType(04, "rparen");
+pub const NUMBER: NodeType = NodeType(05, "number");
+pub const STRING: NodeType = NodeType(06, "string");
+pub const ID: NodeType = NodeType(07, "id");
 
-const TINY_FILE: NodeType = NodeType(08, "file");
-const LITERAL: NodeType = NodeType(09, "literal");
-const LIST: NodeType = NodeType(10, "list");
+pub const TINY_FILE: NodeType = NodeType(08, "file");
+pub const LITERAL: NodeType = NodeType(09, "literal");
+pub const LIST: NodeType = NodeType(10, "list");
 
-fn tiny_tokenizer(builder: &mut TokenBuilder) {
+pub fn tiny_tokenizer(builder: &mut TokenBuilder) {
     loop {
         if builder.try_emit(LPAREN, '(') || builder.try_emit(RPAREN, ')')
             || builder.try_advance_while(WHITESPACE, &char::is_whitespace)
@@ -46,8 +46,13 @@ fn tiny_tokenizer(builder: &mut TokenBuilder) {
     }
 }
 
-fn tiny_parser(builder: &mut RstBuilder) {
-    parse(builder);
+pub fn tiny_parser(builder: &mut RstBuilder) {
+    loop {
+        builder.skip_ws();
+        if !parse(builder) {
+            break
+        }
+    }
 }
 
 fn parse(builder: &mut RstBuilder) -> bool {
