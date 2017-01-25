@@ -92,11 +92,12 @@ fn parse(builder: &mut RstBuilder) -> bool {
     }
 }
 
-
+#[cfg(test)]
 fn check_tokenizer(text: &str, expected: &str) {
     syntax::check_tokenizer(&tiny_tokenizer, text, expected);
 }
 
+#[cfg(test)]
 fn check_parser(text: &str, expected: &str) {
     syntax::check_parser(&tiny_tokenizer, &tiny_parser, TINY_FILE, text, expected);
 }

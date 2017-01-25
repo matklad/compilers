@@ -5,7 +5,7 @@ macro_rules! w {
   ($($tt:tt)*) => { write!($($tt)*).unwrap() }
 }
 
-fn generate(p: &Program) -> String {
+pub fn generate(p: &Program) -> String {
     let mut buff = String::new();
     for stmt in p.body.iter() {
         generate_stmt(&mut buff, stmt);
@@ -42,7 +42,8 @@ fn generate_expr(buff: &mut String, expr: &Expression) {
 
 #[test]
 fn test_codegen() {
-    let program = Program::from_text(r#"(add 2 (subtract 4 2))"hello""#);
+    let file = ::ast::AstFile::new(super::parse_tiny(r#"(add 2 (subtract 4 2))"hello""#.to_owned()));
+    let program = ::target::translate(&file);
     let actual = generate(&program);
     let expect = r#"
 add(2, subtract(4, 2));

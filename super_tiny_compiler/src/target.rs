@@ -6,13 +6,6 @@ pub struct Program {
     pub body: Vec<ExpressionStatement>
 }
 
-impl Program {
-    pub fn from_text(text: &str) -> Program {
-        let file = AstFile::from_text(text);
-        translate(&file)
-    }
-}
-
 #[derive(Debug)]
 pub struct ExpressionStatement(pub Expression);
 
@@ -36,7 +29,7 @@ pub enum Expression {
     }
 }
 
-fn translate(ast: &AstFile) -> Program {
+pub fn translate(ast: &AstFile) -> Program {
     translate_program(ast.root())
 }
 
@@ -78,7 +71,7 @@ fn translate_identifier(element: ast::Variable) -> Expression {
 
 #[test]
 fn test_translation() {
-    let source = AstFile::from_text(r#"hello (1 "hi")"#);
+    let source = AstFile::new(super::parse_tiny(r#"hello (1 "hi")"#.to_owned()));
     let target = translate(&source);
     let actual = format!("{:#?}", target);
     let expected = r#"

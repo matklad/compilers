@@ -1,6 +1,6 @@
-use syntax::{TokenFile, RstFile, Node, NodeType};
+use syntax::{RstFile, Node, NodeType};
 
-use rst::{tiny_tokenizer, tiny_parser, LITERAL, ID, LIST, LPAREN, RPAREN, TINY_FILE, STRING, NUMBER};
+use rst::{LITERAL, ID, LIST, LPAREN, RPAREN, TINY_FILE, STRING, NUMBER};
 
 pub struct AstFile {
     rst: RstFile
@@ -9,12 +9,6 @@ pub struct AstFile {
 impl AstFile {
     pub fn new(rst: RstFile) -> AstFile {
         AstFile { rst: rst }
-    }
-
-    pub fn from_text(text: &str) -> AstFile {
-        let tokens = TokenFile::new(text.to_owned(), &tiny_tokenizer);
-        let rst = RstFile::new(tokens, TINY_FILE, &tiny_parser);
-        AstFile::new(rst)
     }
 
     pub fn root(&self) -> Program {
@@ -179,7 +173,7 @@ impl<'f> ListElement<'f> {
 
 #[test]
 fn test_ast() {
-    let file = AstFile::from_text("29 (foo 1)");
+    let file = AstFile::new(super::parse_tiny("29 (foo 1)".to_owned()));
     let program = file.root();
     let elements = program.elements();
     assert_eq!(elements.len(), 2);
