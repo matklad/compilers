@@ -1,3 +1,5 @@
 [workspace]
-members = [ "super_tiny_compiler", "syntax" ]
+members = [ "super_tiny_compiler", "syntax", "pyt/runtime" ]
 
+[profile.release]
+lto = true
