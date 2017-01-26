@@ -2,4 +2,5 @@
 members = [ "super_tiny_compiler", "syntax", "pyt/runtime" ]
 
 [profile.release]
+panic = "abort"
 lto = true
