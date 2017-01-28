@@ -71,28 +71,6 @@ impl<'a> TokenBuilder<'a> {
         self.curr_offset += c.len_utf8() as u32
     }
 
-    pub fn try_advance_while(
-        &mut self,
-        ty: NodeType,
-        cond: &Fn(char) -> bool
-    ) -> bool {
-        match self.peek() {
-            None => return false,
-            Some(c) if cond(c) => {
-                self.bump();
-            }
-            Some(_) => return false
-        }
-
-        while let Some(c) = self.peek() {
-            if !cond(c) { break; }
-            self.bump()
-        }
-
-        self.emit(ty);
-        true
-    }
-
     pub fn emit(&mut self, ty: NodeType) {
         let token = RawToken {
             ty: ty,
@@ -102,15 +80,41 @@ impl<'a> TokenBuilder<'a> {
         self.tokens.push(token)
     }
 
-    pub fn try_emit(&mut self, ty: NodeType, expected: char) -> bool {
-        match self.peek() {
-            Some(c) if c == expected => {
+    pub fn try_text_token(&mut self, tokens: &[(NodeType, char)]) -> bool {
+        let next = match self.peek() {
+            Some(n) => n,
+            None => return false,
+        };
+
+        for &(ty, c) in tokens {
+            if c == next {
                 self.bump();
                 self.emit(ty);
-                true
+                return true;
             }
-            _ => false
         }
+        false
+    }
+
+    pub fn try_pred_token(&mut self, tokens: &[(NodeType, &Fn(char) -> bool)]) -> bool {
+        let next = match self.peek() {
+            Some(n) => n,
+            None => return false,
+        };
+
+        let (ty, cond) = match tokens.iter().find(|&&(_, cond)| cond(next)) {
+            Some(&(ty, cond)) => (ty, cond),
+            None => return false,
+        };
+
+        self.bump();
+        while let Some(c) = self.peek() {
+            if !cond(c) { break; }
+            self.bump()
+        }
+        self.emit(ty);
+
+        true
     }
 
     pub fn error(&mut self) {

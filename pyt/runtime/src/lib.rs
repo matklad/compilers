@@ -71,11 +71,11 @@ pub extern "C" fn exit() -> ! {
 }
 
 
-#[lang = "panic_fmt"]
-#[no_mangle]
-pub extern fn rust_begin_panic(_msg: core::fmt::Arguments,
-                               _file: &'static str,
-                               _line: u32) -> ! {
-    syscall::write(2, b"Panic!\n");
-    syscall::exit(92)
-}
+//#[lang = "panic_fmt"]
+//#[no_mangle]
+//pub extern fn rust_begin_panic(_msg: core::fmt::Arguments,
+//                               _file: &'static str,
+//                               _line: u32) -> ! {
+//    syscall::write(2, b"Panic!\n");
+//    syscall::exit(92)
+//}

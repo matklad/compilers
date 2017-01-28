@@ -11,11 +11,14 @@ pub const LITERAL: NodeType = NodeType(09, "literal");
 pub const LIST: NodeType = NodeType(10, "list");
 
 pub fn tiny_tokenizer(builder: &mut TokenBuilder) {
+    let text_tokens = [(LPAREN, '('), (RPAREN, ')')];
+    let pred_tokens: &[(NodeType, &Fn(char) -> bool)] = &[
+        (ID, &char::is_alphabetic),
+        (WHITESPACE, &char::is_whitespace),
+        (NUMBER, &|c| c.is_digit(10)),
+    ];
     loop {
-        if builder.try_emit(LPAREN, '(') || builder.try_emit(RPAREN, ')')
-            || builder.try_advance_while(WHITESPACE, &char::is_whitespace)
-            || builder.try_advance_while(ID, &char::is_alphabetic)
-            || builder.try_advance_while(NUMBER, &|c| c.is_digit(10)) {
+        if builder.try_text_token(&text_tokens) || builder.try_pred_token(&pred_tokens){
             continue
         }
 

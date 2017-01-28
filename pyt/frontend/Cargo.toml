@@ -1,0 +1,10 @@
+[package]
+name = "frontend"
+version = "0.1.0"
+authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
+
+[dependencies]
+syntax = { path = "../../syntax" }
+
+[lib]
+path = "src/lib.rs"

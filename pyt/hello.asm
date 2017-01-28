@@ -7,6 +7,7 @@ extern exit
 section .text
 _start:
     call input
+    neg rax
     push rax
     call input
     pop rdi

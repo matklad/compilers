@@ -1,5 +1,5 @@
 [workspace]
-members = [ "super_tiny_compiler", "syntax", "pyt/runtime" ]
+members = [ "super_tiny_compiler", "syntax", "pyt/runtime", "pyt" ]
 
 [profile.release]
 panic = "abort"

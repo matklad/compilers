@@ -10,6 +10,20 @@ name = "data_structures"
 version = "0.1.0"
 
 [[package]]
+name = "frontend"
+version = "0.1.0"
+dependencies = [
+ "syntax 0.1.0",
+]
+
+[[package]]
+name = "pyt"
+version = "0.1.0"
+dependencies = [
+ "frontend 0.1.0",
+]
+
+[[package]]
 name = "runtime"
 version = "0.1.0"
 
