@@ -1,6 +1,15 @@
 global _start
-extern main
+extern input
+extern print
+extern exit
+
 
 section .text
 _start:
-    call main
+    call input
+    push rax
+    call input
+    pop rdi
+    add rdi, rax
+    call print
+    call exit
