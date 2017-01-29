@@ -209,12 +209,55 @@ pub type Parser = Fn(&mut RstBuilder);
 
 #[derive(Debug)]
 pub struct RstBuilder<'f> {
-    tokens: &'f[Token<'f>],
+    tokens: &'f [Token<'f>],
     pos: usize,
     nodes: Vec<RawNode>,
-    stack: Vec<(NodeId, Option<NodeId>)>,
+    stack: Vec<Frame>,
 }
 
+#[derive(Debug)]
+struct Frame {
+    parent: NodeId,
+    last_child: Option<NodeId>,
+}
+
+impl Frame {
+    fn new_leaf_node(&mut self, nodes: &mut Vec<RawNode>, token: Token) {
+        let node = RawNode {
+            ty: token.ty,
+            parent: Some(self.parent),
+            next_sibling: None,
+            data: RawNodeData::Leaf { range: token.range },
+        };
+        let id = NodeId(nodes.len() as u32);
+        nodes.push(node);
+
+        self.add_child(&mut *nodes, id);
+    }
+
+    fn new_composite_node(&mut self, nodes: &mut Vec<RawNode>, ty: NodeType) -> NodeId {
+        let node = RawNode {
+            ty: ty,
+            parent: Some(self.parent),
+            next_sibling: None,
+            data: RawNodeData::Composite { first_child: None, range: LazyCell::new() }
+        };
+        let id = NodeId(nodes.len() as u32);
+        nodes.push(node);
+
+        self.add_child(&mut *nodes, id);
+        id
+    }
+
+    fn add_child(&mut self, nodes: &mut [RawNode], id: NodeId) {
+        if let Some(prev) = self.last_child {
+            nodes[prev.0 as usize].next_sibling = Some(id)
+        } else {
+            nodes[self.parent.0 as usize].set_first_child(id)
+        }
+        self.last_child = Some(id);
+    }
+}
 
 impl<'f> RstBuilder<'f> {
     pub fn peek(&self) -> Option<NodeType> {
@@ -234,16 +277,10 @@ impl<'f> RstBuilder<'f> {
             self.tokens[self.pos - 1]
         };
 
-        let (parent, sibling) = self.stack.pop()
+        let frame = self.stack.last_mut()
             .expect("Token without parent");
 
-        let id = self.new_leaf_node(parent, token);
-        if let Some(prev) = sibling {
-            self.node_mut(prev).next_sibling = Some(id)
-        } else {
-            self.node_mut(parent).set_first_child(id)
-        }
-        self.stack.push((parent, Some(id)))
+        frame.new_leaf_node(&mut self.nodes, token);
     }
 
     pub fn eat(&mut self, ty: NodeType) {
@@ -265,28 +302,29 @@ impl<'f> RstBuilder<'f> {
     }
 
     pub fn start(&mut self, ty: NodeType) {
-        let ps = self.stack.pop();
-        let parent = ps.map(|(p, _)| p);
-        let id = self.new_composite_node(parent, ty);
-        match ps {
-            Some((parent, Some(prev))) => {
-                self.node_mut(prev).next_sibling = Some(id);
-                self.stack.push((parent, Some(id)))
-            },
-            Some((parent, None)) => {
-                self.node_mut(parent).set_first_child(id);
-                self.stack.push((parent, Some(id)))
-            },
-            None => {}
+        if self.stack.is_empty() {
+            let id = self.new_composite_node(None, ty);
+            self.stack.push(Frame {
+                parent: id,
+                last_child: None,
+            });
+            return
         }
 
-        self.stack.push((id, None));
+        let id = self.stack
+            .last_mut().unwrap()
+            .new_composite_node(&mut self.nodes, ty);
+
+        self.stack.push(Frame {
+            parent: id,
+            last_child: None,
+        });
     }
 
     pub fn finish(&mut self, ty: NodeType) {
-        let (p, _) = self.stack.pop()
+        let frame = self.stack.pop()
             .expect("Empty parent stack");
-        assert_eq!(self.node_mut(p).ty, ty);
+        assert_eq!(self.node_mut(frame.parent).ty, ty);
     }
 
     fn new(tokens: &'f [Token<'f>]) -> RstBuilder<'f> {
@@ -304,18 +342,6 @@ impl<'f> RstBuilder<'f> {
 
     fn node_mut(&mut self, id: NodeId) -> &mut RawNode {
         &mut self.nodes[id.0 as usize]
-    }
-
-    fn new_leaf_node(&mut self, parent: NodeId, token: Token) -> NodeId {
-        let node = RawNode {
-            ty: token.ty,
-            parent: Some(parent),
-            next_sibling: None,
-            data: RawNodeData::Leaf { range: token.range },
-        };
-        let id = NodeId(self.nodes.len() as u32);
-        self.nodes.push(node);
-        id
     }
 
     fn new_composite_node(&mut self, parent: Option<NodeId>, ty: NodeType) -> NodeId {
