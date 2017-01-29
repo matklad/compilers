@@ -4,6 +4,10 @@ use std::fmt::{self, Write};
 
 use {NodeType, TokenFile, Token, Range, WHITESPACE};
 
+mod raw;
+
+use self::raw::{RawNodes, NodeId, RawNode, RawNodeData, ZERO_NODE_ID};
+
 #[derive(Clone, Copy)]
 pub struct Node<'f> {
     file: &'f RstFile,
@@ -115,7 +119,7 @@ impl RstFile {
     }
 
     pub fn root(&self) -> Node {
-        Node { file: self, id: NodeId(0) }
+        Node { file: self, id: ZERO_NODE_ID }
     }
 
     fn raw(&self, id: NodeId) -> &RawNode {
@@ -166,43 +170,6 @@ impl<'f> ChildrenIterator<'f> {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
-struct NodeId(u32);
-
-#[derive(Debug)]
-struct RawNode {
-    ty: NodeType,
-    parent: Option<NodeId>,
-    next_sibling: Option<NodeId>,
-    data: RawNodeData,
-}
-
-#[derive(Debug)]
-enum RawNodeData {
-    Leaf {
-        range: Range
-    },
-    Composite {
-        first_child: Option<NodeId>,
-        range: LazyCell<Range>,
-    }
-}
-
-impl RawNode {
-    fn first_child(&self) -> Option<NodeId> {
-        match self.data {
-            RawNodeData::Leaf { .. } => None,
-            RawNodeData::Composite { first_child, .. } => first_child,
-        }
-    }
-
-    fn set_first_child(&mut self, id: NodeId) {
-        match self.data {
-            RawNodeData::Leaf { .. } => panic!("Leaf node can't have children"),
-            RawNodeData::Composite { ref mut first_child, .. } => *first_child = Some(id),
-        }
-    }
-}
 
 
 pub type Parser = Fn(&mut RstBuilder);
@@ -347,35 +314,5 @@ impl<'f> RstBuilder<'f> {
             next_sibling: None,
             data: RawNodeData::Composite { first_child: None, range: LazyCell::new() }
         })
-    }
-}
-
-#[derive(Debug)]
-struct RawNodes {
-    data: Vec<RawNode>
-}
-
-impl RawNodes {
-    fn new() -> RawNodes {
-        RawNodes { data: Vec::new() }
-    }
-
-    fn push(&mut self, node: RawNode) -> NodeId {
-        let result = NodeId(self.data.len() as u32);
-        self.data.push(node);
-        result
-    }
-}
-
-impl ::std::ops::Index<NodeId> for RawNodes {
-    type Output = RawNode;
-    fn index(&self, index: NodeId) -> &RawNode {
-        &self.data[index.0 as usize]
-    }
-}
-
-impl ::std::ops::IndexMut<NodeId> for RawNodes {
-    fn index_mut(&mut self, index: NodeId) -> &mut RawNode {
-        &mut self.data[index.0 as usize]
     }
 }
