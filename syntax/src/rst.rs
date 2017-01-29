@@ -82,7 +82,7 @@ impl<'f> fmt::Debug for Node<'f> {
 
 pub struct RstFile {
     text: String,
-    nodes: Vec<RawNode>
+    nodes: RawNodes
 }
 
 
@@ -119,7 +119,7 @@ impl RstFile {
     }
 
     fn raw(&self, id: NodeId) -> &RawNode {
-        &self.nodes[id.0 as usize]
+        &self.nodes[id]
     }
 }
 
@@ -211,7 +211,7 @@ pub type Parser = Fn(&mut RstBuilder);
 pub struct RstBuilder<'f> {
     tokens: &'f [Token<'f>],
     pos: usize,
-    nodes: Vec<RawNode>,
+    nodes: RawNodes,
     stack: Vec<Frame>,
 }
 
@@ -222,38 +222,34 @@ struct Frame {
 }
 
 impl Frame {
-    fn new_leaf_node(&mut self, nodes: &mut Vec<RawNode>, token: Token) {
-        let node = RawNode {
+    fn new_leaf_node(&mut self, nodes: &mut RawNodes, token: Token) {
+        let id = nodes.push(RawNode {
             ty: token.ty,
             parent: Some(self.parent),
             next_sibling: None,
             data: RawNodeData::Leaf { range: token.range },
-        };
-        let id = NodeId(nodes.len() as u32);
-        nodes.push(node);
+        });
 
-        self.add_child(&mut *nodes, id);
+        self.add_child(nodes, id);
     }
 
-    fn new_composite_node(&mut self, nodes: &mut Vec<RawNode>, ty: NodeType) -> NodeId {
-        let node = RawNode {
+    fn new_composite_node(&mut self, nodes: &mut RawNodes, ty: NodeType) -> NodeId {
+        let id = nodes.push(RawNode {
             ty: ty,
             parent: Some(self.parent),
             next_sibling: None,
             data: RawNodeData::Composite { first_child: None, range: LazyCell::new() }
-        };
-        let id = NodeId(nodes.len() as u32);
-        nodes.push(node);
+        });
 
-        self.add_child(&mut *nodes, id);
+        self.add_child(nodes, id);
         id
     }
 
-    fn add_child(&mut self, nodes: &mut [RawNode], id: NodeId) {
+    fn add_child(&mut self, nodes: &mut RawNodes, id: NodeId) {
         if let Some(prev) = self.last_child {
-            nodes[prev.0 as usize].next_sibling = Some(id)
+            nodes[prev].next_sibling = Some(id)
         } else {
-            nodes[self.parent.0 as usize].set_first_child(id)
+            nodes[self.parent].set_first_child(id)
         }
         self.last_child = Some(id);
     }
@@ -331,28 +327,55 @@ impl<'f> RstBuilder<'f> {
         RstBuilder {
             tokens: tokens,
             pos: 0,
-            nodes: Vec::new(),
+            nodes: RawNodes::new(),
             stack: Vec::new(),
         }
     }
 
-    fn into_nodes(self) -> Vec<RawNode> {
+    fn into_nodes(self) -> RawNodes {
         self.nodes
     }
 
     fn node_mut(&mut self, id: NodeId) -> &mut RawNode {
-        &mut self.nodes[id.0 as usize]
+        &mut self.nodes[id]
     }
 
     fn new_composite_node(&mut self, parent: Option<NodeId>, ty: NodeType) -> NodeId {
-        let node = RawNode {
+        self.nodes.push(RawNode {
             ty: ty,
             parent: parent,
             next_sibling: None,
             data: RawNodeData::Composite { first_child: None, range: LazyCell::new() }
-        };
-        let id = NodeId(self.nodes.len() as u32);
-        self.nodes.push(node);
-        id
+        })
+    }
+}
+
+#[derive(Debug)]
+struct RawNodes {
+    data: Vec<RawNode>
+}
+
+impl RawNodes {
+    fn new() -> RawNodes {
+        RawNodes { data: Vec::new() }
+    }
+
+    fn push(&mut self, node: RawNode) -> NodeId {
+        let result = NodeId(self.data.len() as u32);
+        self.data.push(node);
+        result
+    }
+}
+
+impl ::std::ops::Index<NodeId> for RawNodes {
+    type Output = RawNode;
+    fn index(&self, index: NodeId) -> &RawNode {
+        &self.data[index.0 as usize]
+    }
+}
+
+impl ::std::ops::IndexMut<NodeId> for RawNodes {
+    fn index_mut(&mut self, index: NodeId) -> &mut RawNode {
+        &mut self.data[index.0 as usize]
     }
 }
