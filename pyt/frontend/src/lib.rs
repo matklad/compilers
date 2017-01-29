@@ -1,8 +1,7 @@
 extern crate syntax;
 
-use syntax::{RstBuilder, TokenBuilder, NodeType, WHITESPACE};
-
 mod tokenizer;
+mod parser;
 
 pub mod node {
     use syntax::NodeType;

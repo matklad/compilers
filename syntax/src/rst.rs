@@ -1,7 +1,5 @@
 use data_structures::LazyCell;
 
-use std::iter::{Peekable, Cloned};
-use std::slice;
 use std::fmt::{self, Write};
 
 use {NodeType, TokenFile, Token, Range, WHITESPACE};
@@ -92,8 +90,7 @@ impl RstFile {
     pub fn new(file: TokenFile, file_type: NodeType, parser: &Parser) -> RstFile {
         let nodes = {
             let tokens = file.tokens();
-            let tokens = tokens.iter().cloned().peekable();
-            let mut builder = RstBuilder::new(tokens);
+            let mut builder = RstBuilder::new(&tokens);
             builder.start(file_type);
             builder.skip_ws();
             parser(&mut builder);
@@ -210,23 +207,33 @@ impl RawNode {
 
 pub type Parser = Fn(&mut RstBuilder);
 
-type TokenIter<'a> = Peekable<Cloned<slice::Iter<'a, Token<'a>>>>;
-
 #[derive(Debug)]
-pub struct RstBuilder<'a> {
-    tokens: TokenIter<'a>,
+pub struct RstBuilder<'f> {
+    tokens: &'f[Token<'f>],
+    pos: usize,
     nodes: Vec<RawNode>,
     stack: Vec<(NodeId, Option<NodeId>)>,
 }
 
 
-impl<'a> RstBuilder<'a> {
-    pub fn peek(&mut self) -> Option<NodeType> {
-        self.tokens.peek().map(|t| t.ty)
+impl<'f> RstBuilder<'f> {
+    pub fn peek(&self) -> Option<NodeType> {
+        if self.pos < self.tokens.len() {
+            Some(self.tokens[self.pos].ty)
+        } else {
+            None
+        }
     }
 
     pub fn bump(&mut self) {
-        let token = self.tokens.next().expect("EOF");
+        let token = {
+            if self.pos >= self.tokens.len() {
+                panic!("EOF")
+            }
+            self.pos += 1;
+            self.tokens[self.pos - 1]
+        };
+
         let (parent, sibling) = self.stack.pop()
             .expect("Token without parent");
 
@@ -282,11 +289,12 @@ impl<'a> RstBuilder<'a> {
         assert_eq!(self.node_mut(p).ty, ty);
     }
 
-    fn new(tokens: TokenIter) -> RstBuilder {
+    fn new(tokens: &'f [Token<'f>]) -> RstBuilder<'f> {
         RstBuilder {
             tokens: tokens,
+            pos: 0,
             nodes: Vec::new(),
-            stack: Vec::new()
+            stack: Vec::new(),
         }
     }
 
